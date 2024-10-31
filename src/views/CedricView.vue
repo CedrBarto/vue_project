@@ -16,21 +16,25 @@ export default {
     }
   },
   methods: {
-    addToBtn: function () {
+    addToBtn() {
       this.btnValue += 1
     },
-    initDatabase: function () {
-      try {
-        let bdd = new PouchDB('http://admin:UgEBqKGJ$P@4wS@127.0.0.1:5984/vetements')
-        console.log('Base de données initialisée :', bdd)
-        this.db = bdd
-      } catch (error) {
-        console.error("Erreur lors de l'initialisation de la base de données :", error)
-      }
+    initDatabase() {
+      // Créez une instance de PouchDB sans inclure les informations d'identification dans l'URL
+      const db = new PouchDB('http://127.0.0.1:5984/vetements', {
+        fetch: function (url, opts) {
+          // Ajoutez un en-tête d'authentification avec les informations d'identification
+          opts.headers.set('Authorization', 'Basic ' + btoa('admin:UgEBqKGJ$P@4wS'))
+          return PouchDB.fetch(url, opts)
+        }
+      })
+
+      console.log('Base de données initialisée :', db)
+      this.db = db
     },
-    getAllDocs: function () {
-      this.db.allDocs({ include_docs: true, descending: true }, function (err, doc) {
-        console.log(doc.rows)
+    getAllDocs() {
+      this.db.allDocs({ include_docs: true, descending: true }, function (doc, err) {
+        console.log(doc, err)
       })
     }
   },
