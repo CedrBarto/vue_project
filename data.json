@@ -1,0 +1,99 @@
+[
+  
+  {
+    "id": 1,
+    "nom": "T-shirt classique",
+    "type": "haut",
+    "prix": 19.99,
+    "disponibilité": true,
+    "couleur": "blanc",
+    "taille_disponibles": ["S", "M", "L", "XL"],
+    "caractéristiques": {
+      "matière": "coton",
+      "manches": "courtes",
+      "genre": "unisex",
+      "entretien": "lavage à 30°C"
+    }
+  },
+  {
+    "id": 2,
+    "nom": "Jeans slim",
+    "type": "pantalon",
+    "prix": 49.99,
+    "disponibilité": true,
+    "couleur": "bleu foncé",
+    "taille_disponibles": ["32", "34", "36", "38"],
+    "caractéristiques": {
+      "matière": "denim",
+      "coupe": "slim",
+      "fermeture": "zip",
+      "poches": 5,
+      "entretien": "lavage à froid"
+    }
+  },
+  {
+    "id": 3,
+    "nom": "Veste en cuir",
+    "type": "veste",
+    "prix": 199.99,
+    "disponibilité": false,
+    "couleur": "noir",
+    "taille_disponibles": ["M", "L", "XL"],
+    "caractéristiques": {
+      "matière": "cuir véritable",
+      "doublure": "polyester",
+      "fermeture": "zip",
+      "capuche": false,
+      "entretien": "nettoyage à sec"
+    }
+  },
+  {
+    "id": 4,
+    "nom": "Sweat à capuche",
+    "type": "haut",
+    "prix": 39.99,
+    "disponibilité": true,
+    "couleur": "gris",
+    "taille_disponibles": ["S", "M", "L"],
+    "caractéristiques": {
+      "matière": "coton et polyester",
+      "manches": "longues",
+      "capuche": true,
+      "poche ventrale": true,
+      "entretien": "lavage à 40°C"
+    }
+  },
+  {
+    "id": 5,
+    "nom": "Robe d'été",
+    "type": "robe",
+    "prix": 59.99,
+    "disponibilité": true,
+    "couleur": "rouge",
+    "taille_disponibles": ["S", "M", "L"],
+    "caractéristiques": {
+      "matière": "coton léger",
+      "longueur": "mi-genou",
+      "bretelles": "fines",
+      "imprimé": "fleurs",
+      "entretien": "lavage à la main"
+    }
+  },
+  {
+    "id": 6,
+    "nom": "Baskets sport",
+    "type": "chaussures",
+    "prix": 89.99,
+    "disponibilité": true,
+    "couleur": "blanc",
+    "taille_disponibles": ["40", "41", "42", "43", "44"],
+    "caractéristiques": {
+      "matière": "synthétique",
+      "semelle": "caoutchouc",
+      "fermeture": "lacets",
+      "genre": "homme",
+      "entretien": "nettoyage avec un chiffon humide"
+    }
+  }
+]
+
