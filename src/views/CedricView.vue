@@ -2,9 +2,46 @@
   <div class="container mx-auto p-4">
     <h1 class="text-2xl font-bold mb-4">Gestion des Vêtements</h1>
 
-    <!-- Liste des documents -->
+    <!-- Statut de synchronisation -->
+    <div class="mb-4 p-4 rounded" :class="syncStatusClass">
+      <p class="font-semibold">{{ syncStatusMessage }}</p>
+      <p v-if="pendingChanges > 0" class="text-sm">
+        {{ pendingChanges }} modification(s) en attente de synchronisation
+      </p>
+    </div>
+
+    <!-- Contrôles de synchronisation -->
+    <div class="mb-4 flex gap-2">
+      <button @click="syncLocalToRemote" class="bg-green-500 text-white px-4 py-2 rounded">
+        Synchroniser Local → Distant
+      </button>
+      <button @click="syncRemoteToLocal" class="bg-blue-500 text-white px-4 py-2 rounded">
+        Synchroniser Distant → Local
+      </button>
+    </div>
+
+    <!-- Historique de synchronisation -->
+    <div class="mb-4">
+      <h2 class="text-xl font-semibold mb-2">Historique de synchronisation</h2>
+      <ul class="space-y-2">
+        <li
+          v-for="(log, index) in syncLogs"
+          :key="index"
+          class="p-2 rounded"
+          :class="{
+            'bg-green-100': log.type === 'local_to_remote',
+            'bg-blue-100': log.type === 'remote_to_local',
+            'bg-red-100': log.type === 'error'
+          }"
+        >
+          {{ log.message }} - {{ new Date(log.timestamp).toLocaleString() }}
+        </li>
+      </ul>
+    </div>
+
+    <!-- Reste du template identique -->
     <div class="mb-6">
-      <h2 class="text-xl font-semibold mb-2">Liste des vêtements</h2>
+      <h2 class="text-xl font-semibold mb-2">Liste des vêtements ({{ documents.length }})</h2>
       <div class="grid gap-4">
         <div v-for="doc in documents" :key="doc._id" class="border p-4 rounded">
           <div class="flex justify-between items-center">
@@ -12,6 +49,10 @@
               <h3 class="font-bold">{{ doc.nom }}</h3>
               <p>Prix: {{ doc.prix }}€</p>
               <p>Taille: {{ doc.taille }}</p>
+              <p class="text-sm text-gray-500">
+                Dernière modification:
+                {{ new Date(doc.updatedAt || doc.createdAt).toLocaleString() }}
+              </p>
             </div>
             <div>
               <button @click="editDoc(doc)" class="bg-blue-500 text-white px-3 py-1 rounded mr-2">
@@ -26,7 +67,7 @@
       </div>
     </div>
 
-    <!-- Formulaire d'ajout/modification -->
+    <!-- Formulaire d'ajout/modification (reste identique) -->
     <div class="mb-6 border p-4 rounded">
       <h2 class="text-xl font-semibold mb-2">
         {{ isEditing ? 'Modifier le vêtement' : 'Ajouter un vêtement' }}
@@ -78,7 +119,8 @@ import PouchDB from 'pouchdb'
 export default {
   data() {
     return {
-      db: null,
+      localDb: null,
+      remoteDb: null,
       documents: [],
       currentDoc: {
         nom: '',
@@ -86,24 +128,192 @@ export default {
         taille: 'M'
       },
       isEditing: false,
-      editingId: null
+      editingId: null,
+      syncStatus: 'idle',
+      syncLogs: [],
+      pendingChanges: 0
+    }
+  },
+
+  computed: {
+    syncStatusMessage() {
+      switch (this.syncStatus) {
+        case 'idle':
+          return 'Synchronisation inactive'
+        case 'syncing':
+          return 'Synchronisation en cours...'
+        case 'error':
+          return 'Erreur de synchronisation'
+        default:
+          return 'État inconnu'
+      }
+    },
+    syncStatusClass() {
+      return {
+        'bg-gray-100': this.syncStatus === 'idle',
+        'bg-blue-100': this.syncStatus === 'syncing',
+        'bg-red-100': this.syncStatus === 'error'
+      }
     }
   },
 
   methods: {
-    initDatabase() {
-      this.db = new PouchDB('http://127.0.0.1:5984/vetements', {
+    initDatabases() {
+      // Base de données locale
+      this.localDb = new PouchDB('vetements_local')
+
+      // Base de données distante
+      this.remoteDb = new PouchDB('http://127.0.0.1:5984/vetements', {
         fetch: function (url, opts) {
           opts.headers.set('Authorization', 'Basic ' + btoa('admin:UgEBqKGJ$P@4wS'))
           return PouchDB.fetch(url, opts)
         }
       })
-      this.fetchDocuments()
+
+      // Synchronisation continue
+      this.sync = PouchDB.sync(this.localDb, this.remoteDb, {
+        live: true,
+        retry: true
+      })
+        .on('change', (info) => {
+          console.log('Changement sync:', info)
+          this.fetchDocuments()
+        })
+        .on('error', (err) => {
+          console.error('Erreur de synchronisation:', err)
+        })
+
+      // Écouter les changements locaux
+      this.localDb
+        .changes({
+          since: 'now',
+          live: true,
+          include_docs: true
+        })
+        .on('change', (change) => {
+          this.handleDatabaseChange(change)
+        })
+    },
+
+    async syncLocalToRemote() {
+      try {
+        this.syncStatus = 'syncing'
+
+        const localDocs = await this.localDb.allDocs({ include_docs: true })
+
+        for (let row of localDocs.rows) {
+          const doc = row.doc
+
+          if (doc._id && !doc._id.startsWith('_')) {
+            try {
+              // Utiliser replicate ou sync pour une synchronisation plus robuste
+              await this.localDb.replicate.to(this.remoteDb, {
+                doc_ids: [doc._id]
+              })
+            } catch (putError) {
+              // Gérer spécifiquement les conflits de revision
+              if (putError.name === 'conflict') {
+                console.log('Conflit détecté, résolution nécessaire')
+              } else {
+                console.error('Erreur de synchronisation:', putError)
+              }
+            }
+          }
+        }
+
+        this.addSyncLog({
+          type: 'local_to_remote',
+          message: `Synchronisation Local → Distant terminée (${localDocs.rows.length} documents)`
+        })
+
+        this.syncStatus = 'idle'
+      } catch (error) {
+        console.error('Erreur de synchronisation:', error)
+
+        this.addSyncLog({
+          type: 'error',
+          message: `Erreur de synchronisation: ${error.message}`
+        })
+
+        this.syncStatus = 'error'
+      }
+    },
+
+    async syncRemoteToLocal() {
+      try {
+        this.syncStatus = 'syncing'
+
+        // Récupérer tous les documents distants
+        const remoteDocs = await this.remoteDb.allDocs({ include_docs: true })
+
+        // Synchroniser chaque document
+        for (let row of remoteDocs.rows) {
+          const doc = row.doc
+
+          try {
+            // Tenter de mettre à jour ou créer le document local
+            if (doc._id && !doc._id.startsWith('_')) {
+              await this.localDb.put(doc)
+            }
+          } catch (putError) {
+            console.error("Erreur lors de la synchronisation d'un document:", putError)
+          }
+        }
+
+        // Mettre à jour les documents locaux
+        await this.fetchDocuments()
+
+        // Ajouter un log de synchronisation
+        this.addSyncLog({
+          type: 'remote_to_local',
+          message: `Synchronisation Distant → Local terminée (${remoteDocs.rows.length} documents)`
+        })
+
+        this.syncStatus = 'idle'
+      } catch (error) {
+        console.error('Erreur de synchronisation distante vers locale:', error)
+
+        this.addSyncLog({
+          type: 'error',
+          message: `Erreur de synchronisation Distant → Local: ${error.message}`
+        })
+
+        this.syncStatus = 'error'
+      }
+    },
+
+    addSyncLog(log) {
+      // Ajouter un horodatage au log
+      const logWithTimestamp = {
+        ...log,
+        timestamp: new Date().toISOString()
+      }
+
+      // Ajouter le log au début du tableau
+      this.syncLogs.unshift(logWithTimestamp)
+
+      // Limiter le nombre de logs
+      if (this.syncLogs.length > 10) {
+        this.syncLogs = this.syncLogs.slice(0, 10)
+      }
+    },
+
+    handleDatabaseChange(change) {
+      if (change.deleted) {
+        this.documents = this.documents.filter((doc) => doc._id !== change.id)
+      } else {
+        const index = this.documents.findIndex((doc) => doc._id === change.id)
+        if (index !== -1) {
+          this.documents.splice(index, 1, change.doc)
+        } else {
+          this.documents.push(change.doc)
+        }
+      }
     },
 
     async fetchDocuments() {
       try {
-        const result = await this.db.allDocs({ include_docs: true, descending: true })
+        const result = await this.localDb.allDocs({ include_docs: true, descending: true })
         this.documents = result.rows.map((row) => row.doc)
       } catch (error) {
         console.error('Erreur lors de la récupération des documents:', error)
@@ -126,18 +336,23 @@ export default {
 
     async submitForm() {
       try {
+        const timestamp = new Date().toISOString()
+
         if (this.isEditing) {
-          const doc = await this.db.get(this.editingId)
-          await this.db.put({
+          const doc = await this.localDb.get(this.editingId)
+          await this.localDb.put({
             ...doc,
             nom: this.currentDoc.nom,
             prix: this.currentDoc.prix,
-            taille: this.currentDoc.taille
+            taille: this.currentDoc.taille,
+            updatedAt: timestamp
           })
         } else {
-          await this.db.post({
+          await this.localDb.put({
             ...this.currentDoc,
-            createdAt: new Date().toISOString()
+            _id: new Date().toISOString(), // Générer un ID unique
+            createdAt: timestamp,
+            updatedAt: timestamp
           })
         }
 
@@ -160,7 +375,7 @@ export default {
 
     async deleteDoc(doc) {
       try {
-        await this.db.remove(doc)
+        await this.localDb.remove(doc)
         await this.fetchDocuments()
       } catch (error) {
         console.error('Erreur lors de la suppression:', error)
@@ -175,11 +390,21 @@ export default {
       }
       this.isEditing = false
       this.editingId = null
+    },
+
+    cleanup() {
+      if (this.sync) {
+        this.sync.cancel()
+      }
     }
   },
 
   mounted() {
-    this.initDatabase()
+    this.initDatabases()
+  },
+
+  beforeUnmount() {
+    this.cleanup()
   }
 }
 </script>
