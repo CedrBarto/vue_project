@@ -20,77 +20,9 @@
       </button>
     </div>
 
-    <!-- Barre de recherche et contrôles -->
-    <div class="mb-4 space-y-4">
-      <!-- Recherche et boutons de gestion -->
-      <div class="flex gap-2">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Rechercher par nom..."
-          class="border p-2 rounded flex-grow"
-        />
-        <button @click="generateDocs" class="bg-purple-500 text-white px-4 py-2 rounded">
-          Générer 50 articles
-        </button>
-        <button @click="deleteAllDocs" class="bg-red-500 text-white px-4 py-2 rounded">
-          Tout supprimer
-        </button>
-      </div>
-
-      <!-- Formulaire d'ajout/modification -->
-      <div class="border p-4 rounded">
-        <h2 class="text-xl font-semibold mb-2">
-          {{ isEditing ? 'Modifier le vêtement' : 'Ajouter un vêtement' }}
-        </h2>
-        <form @submit.prevent="submitForm" class="space-y-4">
-          <div>
-            <label class="block mb-1">Nom</label>
-            <input
-              v-model="currentDoc.nom"
-              type="text"
-              required
-              class="border p-2 w-full rounded"
-            />
-          </div>
-          <div>
-            <label class="block mb-1">Prix</label>
-            <input
-              v-model="currentDoc.prix"
-              type="number"
-              required
-              class="border p-2 w-full rounded"
-            />
-          </div>
-          <div>
-            <label class="block mb-1">Taille</label>
-            <select v-model="currentDoc.taille" required class="border p-2 w-full rounded">
-              <option value="XS">XS</option>
-              <option value="S">S</option>
-              <option value="M">M</option>
-              <option value="L">L</option>
-              <option value="XL">XL</option>
-            </select>
-          </div>
-          <div class="flex gap-2">
-            <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">
-              {{ isEditing ? 'Mettre à jour' : 'Ajouter' }}
-            </button>
-            <button
-              type="button"
-              @click="generateFakeDoc"
-              class="bg-purple-500 text-white px-4 py-2 rounded"
-            >
-              Générer démo
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
     <!-- Historique de synchronisation -->
-    <div class="mb-4">
-      <h2 class="text-xl font-semibold mb-2">Historique de synchronisation</h2>
+    <div class="mb-8">
+      <h2 class="text-xl font-semibold mb-6">Historique de synchronisation</h2>
       <ul class="space-y-2">
         <li
           v-for="(log, index) in syncLogs"
@@ -107,6 +39,112 @@
       </ul>
     </div>
 
+    <!-- Barre de recherche et contrôles -->
+    <div class="flex gap-4">
+      <input
+        v-model="searchQuery"
+        type="text"
+        placeholder="Rechercher par nom..."
+        class="border p-2 rounded flex-grow"
+      />
+      <button @click="generateDocs" class="bg-purple-500 text-white px-4 py-2 rounded">
+        Générer 10 articles
+      </button>
+      <button @click="deleteAllDocs" class="bg-red-500 text-white px-4 py-2 rounded">
+        Tout supprimer
+      </button>
+    </div>
+
+    <!-- Formulaire d'ajout/modification -->
+    <div class="border p-4 rounded">
+      <h2 class="text-xl font-semibold mb-4">
+        {{ isEditing ? 'Modifier le vêtement' : 'Ajouter un vêtement' }}
+      </h2>
+      <form @submit.prevent="submitForm" class="space-y-4">
+        <!-- Grille pour aligner les champs avec beaucoup plus d'espacement -->
+        <div class="grid grid-cols-[120px_1fr] gap-x-8 items-center">
+          <!-- Nom -->
+          <label class="font-medium">Nom:</label>
+          <div class="w-full">
+            <input
+              v-model="currentDoc.nom"
+              type="text"
+              required
+              class="border p-2 rounded w-full"
+            />
+          </div>
+
+          <!-- Prix -->
+          <label class="font-medium">Prix:</label>
+          <div class="w-full">
+            <input
+              v-model="currentDoc.prix"
+              type="number"
+              required
+              class="border p-2 rounded w-full"
+            />
+          </div>
+
+          <!-- Taille -->
+          <label class="font-medium">Taille:</label>
+          <div class="w-full">
+            <select v-model="currentDoc.taille" required class="border p-2 rounded w-full">
+              <option value="XS">XS</option>
+              <option value="S">S</option>
+              <option value="M">M</option>
+              <option value="L">L</option>
+              <option value="XL">XL</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Médias -->
+        <div class="mt-4">
+          <label class="block font-medium mb-2">Médias</label>
+          <div class="space-y-2">
+            <!-- Input pour ajouter des fichiers -->
+            <input
+              type="file"
+              @change="handleFileUpload"
+              multiple
+              accept="image/*"
+              class="border p-2 w-full rounded"
+            />
+
+            <!-- Prévisualisation des médias -->
+            <div
+              v-if="currentDoc.medias && currentDoc.medias.length > 0"
+              class="grid grid-cols-3 gap-2"
+            >
+              <div v-for="(media, index) in currentDoc.medias" :key="index" class="relative">
+                <img :src="media.url" class="w-full h-20 object-cover rounded" alt="Aperçu" />
+                <button
+                  @click="removeMedia(index)"
+                  class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Boutons -->
+        <div class="flex gap-2 mt-4">
+          <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">
+            {{ isEditing ? 'Mettre à jour' : 'Ajouter' }}
+          </button>
+          <button
+            type="button"
+            @click="generateFakeDoc"
+            class="bg-purple-500 text-white px-4 py-2 rounded"
+          >
+            Générer démo
+          </button>
+        </div>
+      </form>
+    </div>
+
     <!-- Liste des vêtements -->
     <div class="mb-6">
       <h2 class="text-xl font-semibold mb-2">Liste des vêtements ({{ documents.length }})</h2>
@@ -115,7 +153,7 @@
           <div class="flex justify-between items-center">
             <div>
               <h3 class="font-bold">{{ doc.nom }}</h3>
-              <p>Prix: {{ doc.prix }}€</p>
+              <p>Prix: {{ doc.prix }} CHF</p>
               <p>Taille: {{ doc.taille }}</p>
               <p class="text-sm text-gray-500">
                 Dernière modification:
@@ -129,6 +167,13 @@
               <button @click="deleteDoc(doc)" class="bg-red-500 text-white px-3 py-1 rounded">
                 Supprimer
               </button>
+            </div>
+          </div>
+          <div v-if="doc.medias && doc.medias.length > 0" class="mt-2">
+            <div class="grid grid-cols-3 gap-2">
+              <div v-for="(media, index) in doc.medias" :key="index" class="relative">
+                <img :src="media.url" class="w-full h-20 object-cover rounded" alt="Media" />
+              </div>
             </div>
           </div>
         </div>
@@ -151,7 +196,8 @@ export default {
       currentDoc: {
         nom: '',
         prix: '',
-        taille: 'M'
+        taille: 'M',
+        medias: []
       },
       isEditing: false,
       editingId: null,
@@ -406,12 +452,14 @@ export default {
             nom: this.currentDoc.nom,
             prix: this.currentDoc.prix,
             taille: this.currentDoc.taille,
+            medias: this.currentDoc.medias,
             updatedAt: timestamp
           })
         } else {
           await this.localDb.put({
             ...this.currentDoc,
-            _id: new Date().toISOString(), // Générer un ID unique
+            _id: new Date().toISOString(),
+            medias: this.currentDoc.medias,
             createdAt: timestamp,
             updatedAt: timestamp
           })
@@ -430,7 +478,8 @@ export default {
       this.currentDoc = {
         nom: doc.nom,
         prix: doc.prix,
-        taille: doc.taille
+        taille: doc.taille,
+        medias: doc.medias || []
       }
     },
 
@@ -447,7 +496,8 @@ export default {
       this.currentDoc = {
         nom: '',
         prix: '',
-        taille: 'M'
+        taille: 'M',
+        medias: []
       }
       this.isEditing = false
       this.editingId = null
@@ -526,6 +576,103 @@ export default {
           message: `Erreur lors de la suppression: ${error.message}`
         })
       }
+    },
+
+    /**
+     * Redimensionne une image avant de la convertir en base64
+     * @param {File} file - Le fichier image à redimensionner
+     * @param {number} maxWidth - Largeur maximale souhaitée
+     * @param {number} maxHeight - Hauteur maximale souhaitée
+     * @returns {Promise<string>} - L'image redimensionnée en base64
+     */
+    resizeImage(file, maxWidth = 300, maxHeight = 300) {
+      // Réduction des dimensions maximales
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          const img = new Image()
+          img.onload = () => {
+            const canvas = document.createElement('canvas')
+            let width = img.width
+            let height = img.height
+
+            // Calculer les nouvelles dimensions en gardant le ratio
+            if (width > height) {
+              if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width)
+                width = maxWidth
+              }
+            } else {
+              if (height > maxHeight) {
+                width = Math.round((width * maxHeight) / height)
+                height = maxHeight
+              }
+            }
+
+            canvas.width = width
+            canvas.height = height
+
+            const ctx = canvas.getContext('2d')
+            ctx.drawImage(img, 0, 0, width, height)
+
+            // Convertir en base64 avec une qualité réduite
+            resolve(canvas.toDataURL(file.type, 0.6)) // Réduction de la qualité à 60%
+          }
+          img.onerror = reject
+          img.src = e.target.result
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+    },
+
+    /**
+     * Gère l'upload des fichiers avec redimensionnement
+     */
+    async handleFileUpload(event) {
+      const files = event.target.files
+      if (!files.length) return
+
+      for (let file of files) {
+        try {
+          if (!file.type.startsWith('image/')) {
+            console.error('Le fichier doit être une image')
+            continue
+          }
+
+          // Redimensionner l'image avec des dimensions plus petites
+          const resizedBase64 = await this.resizeImage(file, 300, 300)
+
+          const mediaId = new Date().toISOString() + '-' + Math.random().toString(36).substr(2, 9)
+
+          const media = {
+            _id: mediaId,
+            type: file.type,
+            name: file.name,
+            url: resizedBase64
+          }
+
+          if (!this.currentDoc.medias) {
+            this.currentDoc.medias = []
+          }
+          this.currentDoc.medias.push(media)
+        } catch (error) {
+          console.error('Erreur lors du traitement du fichier:', error)
+        }
+      }
+    },
+
+    removeMedia(index) {
+      this.currentDoc.medias.splice(index, 1)
+    },
+
+    fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.readAsDataURL(file)
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = (error) => reject(error)
+      })
     }
   },
 
